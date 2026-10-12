@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+const store=new Map();globalThis.localStorage={getItem:key=>store.get(key)??null,setItem:(key,value)=>store.set(key,value)};Object.defineProperty(globalThis,'navigator',{value:{locks:{request:async(_name,fn)=>fn()}},configurable:true});
+const {requestRoom}=await import('../src/local-room.ts');
+const post=async(a)=>{const r=await requestRoom('/api/room',{method:'POST',body:JSON.stringify(a)});return {status:r.status,...await r.json()};};
+const created=await post({type:'create',name:'A'});assert.equal(created.status,200);assert.ok(created.token);assert.ok(!created.state.players[0].token);
+const joined=await post({type:'join',code:created.code,name:'B'});assert.equal(joined.status,200);assert.equal(joined.player,2);
+const picked=await post({type:'pickup',code:created.code,token:created.token,item:'pipe0'});assert.equal(picked.state.items[0].owner,1);
+const competing=await post({type:'pickup',code:created.code,token:joined.token,item:'pipe0'});assert.equal(competing.status,400);
+const loaded=await post({type:'stashRoom',code:created.code,token:created.token,board:0});assert.equal(loaded.state.items.filter(i=>i.owner==='tray:0').length,8);
+const again=await requestRoom('/api/room?code='+created.code);const state=await again.json();assert.equal(state.items[0].owner,1);assert.equal(state.players.length,2);
+const raw=JSON.parse(store.get('puzzle-workshop:room:'+created.code));assert.ok(raw.players[0].token);assert.equal((await post({type:'join',code:created.code})).status,409);
+console.log('PASS: static room creation, local join, token masking, inventory persistence, pickup race, room shortcut, two-player limit');

@@ -1,0 +1,2 @@
+export const voltages=[3,6,9,12],resistances=[100,200,300,400],targets=[10,20,30];
+export function circuitReadings(s:any){return targets.map((target,row)=>{const b=row*3,voltage=voltages[s.settings[7][b]%4],resistance=resistances[s.settings[7][b+1]%4],closed=s.settings[7][b+2]%2===1;const complete=s.circuit.slice(b,b+3).every(Boolean),current=complete&&closed?voltage/resistance*1000:0;return {voltage,resistance,closed,current,target,matched:complete&&Math.abs(current-target)<0.01};});}
