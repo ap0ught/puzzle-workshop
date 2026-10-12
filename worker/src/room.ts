@@ -51,9 +51,12 @@ export class Room extends DurableObject<Env> {
     await this.ctx.storage.sql.exec('UPDATE room SET state = ?1 WHERE id = 1', JSON.stringify(this.#state));
   }
 
-  /** Every mutation ends here: recompute derived flags, bump version, persist, push. */
-  async #commit(): Promise<void> {
-    const before = JSON.stringify(this.#state);
+  /**
+   * Every mutation ends here: recompute derived flags, bump version, persist,
+   * push. Callers pass the state as it was before their mutation, because by
+   * the time this runs the state already carries the new move.
+   */
+  async #commit(before: string): Promise<void> {
     check(this.#state);
     if (JSON.stringify(this.#state) !== before) this.#state.version++;
     await this.#persist();
@@ -85,10 +88,11 @@ export class Room extends DurableObject<Env> {
 
   async create(name: string) {
     if (this.#state) throw new RoomError('Room already exists.', 409);
+    const before = JSON.stringify(this.#state);
     const state = initial();
     state.players.push({ id: 1, name: name.slice(0, 20), token: crypto.randomUUID(), x: 45, y: 60 });
     this.#state = state;
-    await this.#commit();
+    await this.#commit(before);
     return { code: this.ctx.id.name || '', token: state.players[0].token, player: 1, state: view(state) };
   }
 
@@ -98,8 +102,9 @@ export class Room extends DurableObject<Env> {
       throw new RoomError('This room already has two players.', 409);
     }
     const token = crypto.randomUUID();
+    const before = JSON.stringify(state);
     state.players.push({ id: state.players.length + 1, name: name.slice(0, 20), token, x: 55, y: 60 });
-    await this.#commit();
+    await this.#commit(before);
     return { state: view(state), token, player: state.players.length };
   }
 
@@ -110,8 +115,9 @@ export class Room extends DurableObject<Env> {
    */
   async move(token: string, action: any) {
     const state = this.#require();
+    const before = JSON.stringify(state);
     act(state, token, action);
-    await this.#commit();
+    await this.#commit(before);
     return { state: view(state) };
   }
 
@@ -129,7 +135,9 @@ export class Room extends DurableObject<Env> {
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
-    const code = (url.searchParams.get('code') || '').toUpperCase();
+    // The Worker moves the code into the path before forwarding, so that is
+    // the only place it is trusted to be (never a query param the client set).
+    const code = (url.pathname.split('/').filter(Boolean).pop() || '').toUpperCase();
 
     if (request.headers.get('Upgrade') === 'websocket') {
       if (!validCode(code)) return json({ error: 'Room not found.' }, 404);
@@ -140,7 +148,8 @@ export class Room extends DurableObject<Env> {
       const pair = new WebSocketPair();
       const client = pair[0];
       const server = pair[1];
-      server.accept();
+      // acceptWebSocket() registers the socket for hibernation and accepts it;
+      // a plain accept() before it would make the call below throw.
       this.ctx.acceptWebSocket(server);
       // Send current state immediately so a reconnecting player is never
       // waiting for the next turn to find out where the game stands.

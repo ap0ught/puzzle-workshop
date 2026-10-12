@@ -37,6 +37,9 @@ function originAllowed(origin: string | null, env: Env): boolean {
  * somebody's room rather than the thing that keeps a room private.
  */
 function cors(request: Request, env: Env, response: Response): Response {
+  // A 101 upgrade response carries the socket itself, which rewrapping into a
+  // fresh Response would drop; the origin check already ran before forwarding.
+  if (response.status === 101) return response;
   const origin = request.headers.get('Origin');
   if (!originAllowed(origin, env)) return response;
   const headers = new Headers(response.headers);
@@ -56,12 +59,18 @@ function roomNameFrom(url: URL): string {
 /**
  * Forward to the Durable Object that owns this code, moving the code into the
  * path so the object can read it without trusting anything else on the URL.
+ * A body must be passed when the request's own stream was already read to
+ * decide which object owns the code: a consumed ReadableStream cannot be
+ * handed to a second Request.
  */
-function toRoom(request: Request, code: string): Request {
+function toRoom(request: Request, code: string, body?: unknown): Request {
   const target = new URL(request.url);
   target.pathname = `/api/room/${code}`;
   target.searchParams.delete('code');
-  return new Request(target, request);
+  if (body === undefined) return new Request(target, request);
+  const headers = new Headers(request.headers);
+  headers.set('Content-Type', 'application/json');
+  return new Request(target, { method: request.method, headers, body: JSON.stringify(body) });
 }
 
 export default {
@@ -104,14 +113,14 @@ export default {
         if (!validCode(code)) {
           return cors(request, env, Response.json({ error: 'Room not found.' }, { status: 400 }));
         }
-        return cors(request, env, await env.ROOM.get(env.ROOM.idFromName(code)).fetch(toRoom(request, code)));
+        return cors(request, env, await env.ROOM.get(env.ROOM.idFromName(code)).fetch(toRoom(request, code, body)));
       }
 
       // Code generation races are resolved by asking the object whether the
       // room it was handed already exists, then drawing again.
       for (let attempt = 0; attempt < CREATE_ATTEMPTS; attempt++) {
         const code = randomCode();
-        const response = await env.ROOM.get(env.ROOM.idFromName(code)).fetch(toRoom(request, code));
+        const response = await env.ROOM.get(env.ROOM.idFromName(code)).fetch(toRoom(request, code, body));
         if (response.status !== 409) return cors(request, env, response);
       }
       return cors(request, env, Response.json({ error: 'Could not allocate a room code. Try again.' }, { status: 503 }));
