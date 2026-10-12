@@ -11,7 +11,19 @@ concurrency:
   group: pages
   cancel-in-progress: true
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm test
   deploy:
+    needs: check
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -25,3 +37,20 @@ jobs:
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
+  # Deploy the room Worker alongside the site. Stays skipped until the
+  # repository variable ROOMS_WORKER_DEPLOY is set to "true" and a
+  # CLOUDFLARE_API_TOKEN secret exists.
+  deploy-worker:
+    if: ${{ vars.ROOMS_WORKER_DEPLOY == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Deploy room Worker
+        run: npx wrangler deploy --config worker/wrangler.toml
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
