@@ -36,7 +36,7 @@ jobs:
           path: docs
       - name: Deploy
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
   # Deploy the room Worker alongside the site. Stays skipped until the
   # repository variable ROOMS_WORKER_DEPLOY is set to "true" and a
   # CLOUDFLARE_API_TOKEN secret exists.
