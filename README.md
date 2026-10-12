@@ -2,19 +2,11 @@
 
 A cooperative workshop and zombie-defense prototype. Solve rooms to activate defense systems, earn fighter packages, complete click-and-swap fighter pictures, and defend the perimeter.
 
-## Deploy the included build
+## Deploy
 
-No build is required for the first deployment: `docs/` contains the ready-to-host game.
+Push to `main`. The `.github/workflows/pages.yml` workflow runs the checks and tests, then publishes the committed `docs/` to GitHub Pages — no build happens in CI. The build uses relative asset URLs, so it works with either `username.github.io` or `username.github.io/repository-name/`.
 
-1. Create a GitHub repository and copy the **contents** of this folder into its root, including `.github/workflows/pages.yml`.
-2. Commit and push to the `main` branch.
-3. In the repository, open **Settings → Pages → Build and deployment → Source**, and choose **GitHub Actions**.
-4. Open **Actions → Deploy Puzzle Workshop to GitHub Pages**. Run the workflow manually if the initial push happened before Pages was configured.
-5. When the deployment succeeds, open the URL shown by the workflow or in Settings → Pages.
-
-The workflow publishes `docs/` directly. The build uses relative asset URLs, so it works with either `username.github.io` or `username.github.io/repository-name/`.
-
-Alternative: remove `.github/workflows/pages.yml` and choose **Deploy from a branch**, `main`, `/docs` in Pages settings.
+The committed `docs/` is the cross-device edition pointed at the Worker deployed for this repository (see [Remote co-op](#remote-co-op-the-included-build)). If you fork or copy this package to a different repository or Worker, rebuild `docs/` against your own Worker URL and update `ALLOWED_ORIGINS` in `worker/wrangler.toml` to include your Pages origin, or the browser will be blocked.
 
 ## Run locally
 
@@ -24,7 +16,7 @@ To run the included build without Node:
 python3 -m http.server 8000 --directory docs
 ```
 
-Open http://localhost:8000/. Serve it over HTTP; do not open `index.html` directly as a file.
+Open http://localhost:8000/. Serve it over HTTP; do not open `index.html` directly as a file. (The committed `docs/` contacts the deployed room Worker; if the Worker is unreachable the game still loads and shows connection errors instead.)
 
 To edit the source, install Node 22.12 or newer, then:
 
@@ -33,12 +25,12 @@ npm install
 npm run dev
 ```
 
-Before publishing source changes:
+`npm run dev` builds the offline edition for local development against `localhost:5173`. Before publishing source changes, rebuild the committed (remote) edition and verify it:
 
 ```bash
 npm run check
 npm test
-npm run build
+VITE_ROOM_API=https://puzzle-workshop-rooms.puzzle-workshop-github-pages.workers.dev npm run build
 ```
 
 To verify the whole experience in a real browser — both editions, including
@@ -66,20 +58,33 @@ Commit both the source changes and the rebuilt `docs/` directory. The deployment
 - Fighter packages progress through 3×3, 4×4, 5×5, 6×6, 7×7, and 8×8 picture grids.
 - Picture recruitment uses **click-and-swap**, with every cell filled. Select one piece, then select any other piece.
 - Recruited fighters and activated systems power turn-based defense against zombie waves.
-- Local browser persistence, Add local player, and Switch player.
+- Cross-device co-op through the room Worker (two players, any devices), plus local browser persistence, Add local player, and Switch player.
 
-## Local play and remote co-op
+## Remote co-op (the included build)
 
-GitHub Pages hosts static files. By default this edition uses `localStorage` instead of the hosted game's server/database service, so **room codes only connect tabs of the same browser profile at the same site origin** — two players can share one browser using **Add local player / Switch player**, or join the same room from separate tabs, with Web Locks serializing room updates when available. Saved games belong to that browser/site origin; clearing browser storage removes them. Rooms saved in the original hosted game are not automatically transferred.
+The committed `docs/` build is the **cross-device edition**: it talks to a room backend deployed at `https://puzzle-workshop-rooms.puzzle-workshop-github-pages.workers.dev`. The backend is the Cloudflare Worker in `worker/` — one Durable Object per room, with updates pushed to connected players over a WebSocket — so entering a room code on any device joins the same room. The Worker accepts requests only from the origins listed in `worker/wrangler.toml`.
 
-For co-op across devices, the repository includes an optional room backend in `worker/`: a Cloudflare Worker where each room is one Durable Object and updates are pushed to connected players over a WebSocket. Deploy it, then build the site against it:
+The site learns the Worker's URL from `VITE_ROOM_API` at build time. To rebuild the committed (remote) edition:
+
+```bash
+VITE_ROOM_API=https://puzzle-workshop-rooms.puzzle-workshop-github-pages.workers.dev npm run build
+```
+
+To deploy (or re-deploy) the Worker itself:
 
 ```bash
 npm run worker:deploy
-VITE_ROOM_API=https://<your-worker-url> npm run build
 ```
 
-With that build, entering a room code on any device joins the same room. The default build (no `VITE_ROOM_API`) stays fully offline and contacts no server. The Worker accepts requests only from the origins listed in `worker/wrangler.toml`, and `npm run worker:dev` runs it locally for development.
+`npm run worker:dev` runs the Worker locally (port 8799) for development, and `scripts/e2e.mjs` exercises both a local Worker and the offline fallback in a real browser.
+
+### Offline fallback
+
+Building without `VITE_ROOM_API` produces a fully offline edition that contacts no server. It uses `localStorage` instead of the room backend, so **room codes only connect tabs of the same browser profile at the same site origin** — two players can share one browser using **Add local player / Switch player**, or join the same room from separate tabs, with Web Locks serializing room updates when available. Saved games belong to that browser/site origin; clearing browser storage removes them.
+
+```bash
+npm run build
+```
 
 ## Layout
 
@@ -87,9 +92,9 @@ With that build, entering a room code on any device joins the same room. The def
 - `src/app/`: game UI and styles.
 - `src/components/game/`: gear graphics, circuit graphics, fighter portraits, and recruitment UI.
 - `src/lib/`: shared puzzle, inventory, progression, recruitment, and combat rules.
-- `src/local-room.ts`: browser-local room service, the default when no remote backend is configured.
+- `src/local-room.ts`: browser-local room service, used by the offline fallback build.
 - `src/room-service.ts`: picks the local room or the room Worker at build time via `VITE_ROOM_API`.
-- `worker/`: optional Cloudflare Worker backend for cross-device rooms (one Durable Object per room, WebSocket state push).
+- `worker/`: Cloudflare Worker backend for cross-device rooms (one Durable Object per room, WebSocket state push).
 - `tests/`: puzzle, recruitment, inventory, circuit, combat, and local-room checks; run with `npm test`.
 - `.github/workflows/pages.yml`: GitHub Pages deployment workflow.
 

@@ -13,6 +13,8 @@ const REPO=fileURLToPath(new URL('..', import.meta.url));
 // origin), so the E2E exercises the real config, not an override.
 const WORKER_PORT=8799, SITE_PORT=5173;
 const SITE=`http://127.0.0.1:${SITE_PORT}`;
+// The committed docs/ is the remote build pointed at the deployed Worker.
+const PROD_ROOM_API='https://puzzle-workshop-rooms.puzzle-workshop-github-pages.workers.dev';
 
 let failures=0;
 const ok=msg=>console.log('ok:   '+msg);
@@ -127,8 +129,8 @@ try{
   }finally{await browser.close();}
 }finally{site2.kill('SIGTERM');}
 }finally{
-  // Leave docs/ as the offline build (the committed edition).
-  build(null);
+  // Leave docs/ as the remote build pointed at the deployed Worker (the committed edition).
+  build(PROD_ROOM_API);
 }
 console.log(failures?`\n${failures} FAILURE(S)`:'\nALL E2E CHECKS PASSED');
 process.exit(failures?1:0);
