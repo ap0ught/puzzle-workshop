@@ -41,6 +41,20 @@ npm test
 npm run build
 ```
 
+To verify the whole experience in a real browser — both editions, including
+two separate browser profiles playing one room through the local room Worker —
+run the end-to-end script:
+
+```bash
+npx playwright install chromium
+node scripts/e2e.mjs
+```
+
+It builds each edition, serves it from port 5173 (the origin allowed by
+`worker/wrangler.toml`), and checks lobby, create/join, partner visibility,
+and that a move reaches the other profile over the WebSocket rather than the
+poll.
+
 Commit both the source changes and the rebuilt `docs/` directory. The deployment workflow intentionally uses that prebuilt directory and does not install dependencies in CI.
 
 ## What this edition supports
