@@ -1,0 +1,27 @@
+name = "puzzle-workshop-rooms"
+main = "src/index.ts"
+compatibility_date = "2025-04-01"
+
+# The room Worker. GitHub Pages still hosts the site; this only exists so two
+# people on two devices can play the same room.
+#
+#   npx wrangler deploy --config worker/wrangler.toml
+#
+# The site learns this URL from VITE_ROOM_API at build time.
+
+[observability]
+enabled = true
+
+[[durable_objects.bindings]]
+name = "ROOM"
+class_name = "Room"
+
+# SQLite-backed storage: each room is one row of authoritative game state.
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Room"]
+
+[vars]
+# Browser origins allowed to call the room API. The Pages site first; the two
+# localhost entries are for `npm run dev`.
+ALLOWED_ORIGINS = "https://ap0ught.github.io,http://localhost:5173,http://127.0.0.1:5173"

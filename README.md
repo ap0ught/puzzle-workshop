@@ -56,11 +56,16 @@ Commit both the source changes and the rebuilt `docs/` directory. The deployment
 
 ## Local play and remote co-op
 
-GitHub Pages hosts static files. This edition uses `localStorage` instead of the hosted game's server/database service.
+GitHub Pages hosts static files. By default this edition uses `localStorage` instead of the hosted game's server/database service, so **room codes only connect tabs of the same browser profile at the same site origin** — two players can share one browser using **Add local player / Switch player**, or join the same room from separate tabs, with Web Locks serializing room updates when available. Saved games belong to that browser/site origin; clearing browser storage removes them. Rooms saved in the original hosted game are not automatically transferred.
 
-Two players can share one browser using **Add local player / Switch player**, or join the same room from separate tabs of the same browser profile at the same site origin. Web Locks serialize room updates when available.
+For co-op across devices, the repository includes an optional room backend in `worker/`: a Cloudflare Worker where each room is one Durable Object and updates are pushed to connected players over a WebSocket. Deploy it, then build the site against it:
 
-**Room codes do not connect different computers, phones, browser profiles, or browsers. Remote co-op requires a separate backend.** No multiplayer server is included or silently contacted. Saved games belong to that browser/site origin; clearing browser storage removes them. Rooms saved in the original hosted game are not automatically transferred.
+```bash
+npm run worker:deploy
+VITE_ROOM_API=https://<your-worker-url> npm run build
+```
+
+With that build, entering a room code on any device joins the same room. The default build (no `VITE_ROOM_API`) stays fully offline and contacts no server. The Worker accepts requests only from the origins listed in `worker/wrangler.toml`, and `npm run worker:dev` runs it locally for development.
 
 ## Layout
 
@@ -68,7 +73,9 @@ Two players can share one browser using **Add local player / Switch player**, or
 - `src/app/`: game UI and styles.
 - `src/components/game/`: gear graphics, circuit graphics, fighter portraits, and recruitment UI.
 - `src/lib/`: shared puzzle, inventory, progression, recruitment, and combat rules.
-- `src/local-room.ts`: browser-local room service.
+- `src/local-room.ts`: browser-local room service, the default when no remote backend is configured.
+- `src/room-service.ts`: picks the local room or the room Worker at build time via `VITE_ROOM_API`.
+- `worker/`: optional Cloudflare Worker backend for cross-device rooms (one Durable Object per room, WebSocket state push).
 - `tests/`: puzzle, recruitment, inventory, circuit, combat, and local-room checks; run with `npm test`.
 - `.github/workflows/pages.yml`: GitHub Pages deployment workflow.
 
