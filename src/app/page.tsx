@@ -5,6 +5,7 @@ import { CircuitSymbol } from '../components/game/circuit-readout';
 import { GearSocket } from '../components/game/gear-socket';
 import { useState, useEffect, useRef } from 'react';
 import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import { act, connections, trees, puzzles, compatible, upgrade, readyToSolve, filledSockets, requiredPieces, traceBeam, solveLights, lightNeighbors, circuitReadings } from '../lib/game';
 const names = puzzles.map(p => p.name), icons = puzzles.map(p => p.icon), types = puzzles.map(p => p.kind), descriptions = puzzles.map(p => p.rules);
 function symbol(it: any) { return it.type === 'pipe' ? (it.n === 3 || it.n === 4 || it.n === 6 || it.n === 7 ? '┗' : '━') : it.type === 'tile' ? it.n : it.type === 'switch' ? '☀' : it.type === 'tent' ? '⛺' : it.type === 'mirror' ? '◇' : it.type === 'gear' ? '⚙' : it.type === 'battery' ? 'ϟ' : it.type === 'wire' ? '∿' : it.n; }
@@ -137,5 +138,5 @@ export default function Page() {
     }
     catch {
         Msg('Room code: ' + room);
-    } }}>Copy room code ↗</button></div>{done === 8 && <div className="victory"><h2>All defense systems online. Keep recruiting fighters.</h2><p>The workshop is restored. Complete your fighter packages and defend the perimeter.</p><button onClick={() => { S(null); R(''); T(''); Sessions([]); sessionStorage.removeItem('workshop'); }}>Start a new adventure →</button></div>}</>}{msg && <div role="status" className="toast" onClick={() => Msg('')}>{msg} <span>×</span></div>}<footer><span>THE PUZZLE WORKSHOP</span><span>Find a piece. Share an idea. Make it work.</span><span>CO-OP / 01</span></footer>{(import.meta as any).env?.VITE_VERCEL_ANALYTICS && <Analytics />}</main>;
+    } }}>Copy room code ↗</button></div>{done === 8 && <div className="victory"><h2>All defense systems online. Keep recruiting fighters.</h2><p>The workshop is restored. Complete your fighter packages and defend the perimeter.</p><button onClick={() => { S(null); R(''); T(''); Sessions([]); sessionStorage.removeItem('workshop'); }}>Start a new adventure →</button></div>}</>}{msg && <div role="status" className="toast" onClick={() => Msg('')}>{msg} <span>×</span></div>}<footer><span>THE PUZZLE WORKSHOP</span><span>Find a piece. Share an idea. Make it work.</span><span>CO-OP / 01</span></footer>{(import.meta as any).env?.VITE_VERCEL_ANALYTICS && <Analytics />}{(import.meta as any).env?.VITE_VERCEL_ANALYTICS && <SpeedInsights />}</main>;
 }
