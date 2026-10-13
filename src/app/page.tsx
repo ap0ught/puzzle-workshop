@@ -1,6 +1,6 @@
 import {requestRoom,subscribeRoom,remoteRooms} from '../room-service';
 import { DefensePanel, PictureRoom } from '../components/game/defense';
-import { CircuitSymbol } from '../components/game/circuit-readout';
+import { CircuitBoard } from '../components/game/circuit-board';
 'use client';
 import { GearSocket } from '../components/game/gear-socket';
 import { useState, useEffect, useRef } from 'react';
@@ -97,14 +97,23 @@ export default function Page() {
     const cooldown = Math.max(0, Math.ceil((5000 - (clock - (s?.players.find((p: any) => p.id === me)?.assistAt?.[board] || 0))) / 1000));
     const beamPreview = s && board===5 && readyToSolve(s,5) ? traceBeam(s) : null;
     const waterFlowing = !!s?.waterTest && clock < s.waterTest.startedAt + s.waterTest.duration;
+    const circuitWin = !!s && board === 7 && circuitReadings(s).every((r: any) => r.matched);
     useEffect(() => {
         if (activeRoom === 0 && waterFlowing) return;
+        if (activeRoom === 7 && circuitWin) {
+            const hold = setTimeout(() => {
+                ActiveRoom(-1); Mode('explore'); Sel(''); Remove(false);
+                const next = s?.unlocked.find((i: number) => !s.completed.includes(i));
+                if (next !== undefined) B(next);
+            }, 3200);
+            return () => clearTimeout(hold);
+        }
         if (s && activeRoom >= 0 && s.completed.includes(activeRoom)) {
             ActiveRoom(-1); Mode('explore'); Sel(''); Remove(false);
             const next = s.unlocked.find((i: number) => !s.completed.includes(i));
             if (next !== undefined) B(next);
         }
-    }, [s, activeRoom, waterFlowing]);
+    }, [s, activeRoom, waterFlowing, circuitWin]);
     function openPuzzle(i: number) { if (!s.unlocked.includes(i) || s.completed.includes(i)) {
         Msg('Complete an open room to unlock this one.');
         return;
@@ -116,6 +125,7 @@ export default function Page() {
     }
     else
         openPuzzle(i); }
+    function newRoom() { ActiveRoom(-1); Mode('explore'); Sel(''); Remove(false); send({ type: 'create', name: s?.players.find((p: any) => p.id === me)?.name || 'Player 1' }); }
     function cell(c: number) { if (mode !== 'puzzle' || (board === 0 && waterFlowing))
         return; if (remove)
         send({ type: 'remove', board, cell: c, tray: true });
