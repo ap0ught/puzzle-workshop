@@ -22,6 +22,13 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm test
+      # Same command Vercel runs for its build: if this fails, the Vercel
+      # deployment of this commit is broken, so Pages stays undeployed too.
+      - run: npm run build
+      # vercel.json and vite.config.ts must agree on where the static site
+      # lands, or Vercel silently serves the wrong (or empty) directory.
+      - name: Check Vercel output directory matches Vite outDir
+        run: node -e "const fs=require('fs');const v=JSON.parse(fs.readFileSync('vercel.json','utf8'));const m=fs.readFileSync('vite.config.ts','utf8').match(/outDir:\s*'([^']+)'/);if(!m)throw new Error('outDir not found in vite.config.ts');if(v.outputDirectory!==m[1])throw new Error('vercel.json outputDirectory ('+v.outputDirectory+') does not match vite outDir ('+m[1]+')');"
   deploy:
     needs: check
     runs-on: ubuntu-latest
