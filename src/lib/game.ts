@@ -124,6 +124,17 @@ export function act(s: any, token: string, a: any) {
         return s;
     }
     if (Number(a.board) === 0 && ['place','remove','use','reset','load','assist'].includes(a.type)) s.waterTest = null;
+    if (a.type === 'setCircuit') {
+        validateBoard(s, 7);
+        if (!readyToSolve(s, 7)) throw Error('Fill all nine sockets before adjusting the circuits.');
+        const c = Number(a.cell);
+        if (!Number.isInteger(c) || c < 0 || c >= 9 || !s.circuit[c]) throw Error('Choose a filled circuit socket.');
+        const v = Number(a.value), limit = c % 3 === 2 ? 2 : 4;
+        if (!Number.isInteger(v) || v < 0 || v >= limit) throw Error('Invalid circuit setting.');
+        s.settings[7][c] = v;
+        check(s);
+        return s;
+    }
     if (a.type === 'use' && !readyToSolve(s, Number(a.board)))
         throw Error('Fill every required socket before solving this puzzle.');
     if (a.type === 'move') {
