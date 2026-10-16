@@ -9,8 +9,19 @@ export const puzzles = [
     { name: 'Electrical Circuit', icon: 'ϟ', kind: 'battery', field: 'circuit', size: 9, cycles: 4, target: (_cell: number) => 1, accepts: ['battery', 'switch', 'wire'], rules: 'Power three defense circuits. Fill the sockets, then adjust voltage, resistance and switches. Match each target current using I = V ÷ R.' }
 ];
 export const kinds = puzzles.map(p => p.kind);
-export const compatible = (board: number, item: any) => !!item && !!puzzles[board]?.accepts.includes(item.type);
+export const MAX_ROOMS = 16;
+export function createLineup(selection: unknown = kinds) {
+    if (!Array.isArray(selection) || selection.length < 1 || selection.length > MAX_ROOMS || selection.some(kind => typeof kind !== 'string' || !kinds.includes(kind)))
+        throw Error('Choose between 1 and 16 rooms using the available puzzle types.');
+    return selection.map((kind: string, board: number) => ({kind, instance: 'room-' + board}));
+}
+export const puzzleKind = (state: any, board: number) => state?.lineup ? kinds.indexOf(state.lineup[board]?.kind) : board;
+export const puzzleFor = (state: any, board: number) => puzzles[puzzleKind(state, board)];
+// Keep the first copy in its original fields so in-progress saves retain every move.
+export const puzzleState = (state: any, board: number) => !state.lineup || state.lineup.findIndex((entry: any) => entry.kind === state.lineup[board]?.kind) === board ? state : state.instances[state.lineup[board].instance];
+export const puzzleView = (state: any, board: number) => ({...state, ...puzzleState(state, board), settings: {[puzzleKind(state, board)]: state.settings?.[board]}});
+export const compatible = (board: number, item: any, state?: any) => !!item && !!puzzleFor(state, board)?.accepts.includes(item.type);
 
-export const requiredPieces = (board: number) => board === 1 ? 8 : board === 3 ? 5 : puzzles[board].size;
-export const filledSockets = (state: any, board: number) => state[puzzles[board].field].filter(Boolean).length;
-export const readyToSolve = (state: any, board: number) => filledSockets(state, board) === requiredPieces(board);
+export const requiredPieces = (board: number, state?: any) => puzzleKind(state, board) === 1 ? 8 : puzzleKind(state, board) === 3 ? 5 : puzzleFor(state, board).size;
+export const filledSockets = (state: any, board: number) => puzzleState(state, board)[puzzleFor(state, board).field].filter(Boolean).length;
+export const readyToSolve = (state: any, board: number) => filledSockets(state, board) === requiredPieces(board, state);

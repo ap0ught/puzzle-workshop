@@ -12,7 +12,7 @@ async function handle(url:string,options?:RequestInit){
  const a=JSON.parse(String(options.body||'{}'));
  if(a.type==='create'){
  let code='';do{code=crypto.randomUUID().replaceAll('-','').slice(0,8).toUpperCase();}while(read(code));
- const token=crypto.randomUUID(),s=initial();s.players.push({id:1,name:String(a.name||'Player 1').slice(0,20),token,x:45,y:60});save(code,s);return response({code,token,player:1,state:view(s)});
+ const token=crypto.randomUUID(),s=initial(a.lineup);s.players.push({id:1,name:String(a.name||'Player 1').slice(0,20),token,x:45,y:60});save(code,s);return response({code,token,player:1,state:view(s)});
  }
  const code=String(a.code||'').toUpperCase(),s=read(code);if(!s)return response({error:'Room not found in this browser. Remote co-op needs a backend.'},404);
  let token=a.token,player;

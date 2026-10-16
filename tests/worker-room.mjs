@@ -5,9 +5,13 @@ const PORT=8799,HOST='127.0.0.1',BASE=`http://${HOST}:${PORT}`;
 // On the allowlist in worker/wrangler.toml; node's WebSocket sends no Origin
 // of its own, so the upgrade requests below carry one explicitly.
 const ORIGIN='http://localhost:5173';
-const child=spawn(process.execPath,['node_modules/wrangler/bin/wrangler.js','dev','--config','worker/wrangler.toml','--port',String(PORT),'--ip',HOST],{stdio:['ignore','pipe','pipe']});
 let output='';
-child.stdout.on('data',d=>output+=d);child.stderr.on('data',d=>output+=d);
+function startWorker(){
+ const child=spawn(process.execPath,['node_modules/wrangler/bin/wrangler.js','dev','--config','worker/wrangler.toml','--port',String(PORT),'--ip',HOST],{stdio:['ignore','pipe','pipe']});
+ child.stdout.on('data',d=>output+=d);child.stderr.on('data',d=>output+=d);
+ return child;
+}
+let child=startWorker();
 let code='';
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 function request(method,path,{origin=ORIGIN,body}={}){
@@ -55,7 +59,24 @@ try{
  const pushed=await a.next();assert.equal(pushed.state.players.find(p=>p.id===2).x,77);assert.ok(pushed.state.version>first.state.version);
  const bad=openSocket('bogus');await assert.rejects(bad.next(),/socket error/);
  a.close();b.close();bad.close();
+ const custom=await request('POST','/api/room',{body:{type:'create',name:'A',lineup:['gear','pipe','gear']}});
+ assert.equal(custom.status,200);
+ const customRoom=custom.body();assert.deepEqual(customRoom.state.lineup.map(room=>room.kind),['gear','pipe','gear']);
+ assert.equal(new Set(customRoom.state.items.map(item=>item.id)).size,customRoom.state.items.length);
+ const customJoin=await request('POST','/api/room/'+customRoom.code,{body:{type:'join',name:'B',lineup:['tent']}});
+ assert.equal(customJoin.status,200);assert.deepEqual(customJoin.body().state.lineup,customRoom.state.lineup);
+ const customRead=await request('GET','/api/room/'+customRoom.code);
+ assert.deepEqual(customRead.body().state.lineup,customRoom.state.lineup);
+ for(const lineup of [[],['unknown'],Array(17).fill('pipe')])
+  assert.equal((await request('POST','/api/room',{body:{type:'create',lineup}})).status,400);
+ const stopped=new Promise(resolve=>child.once('exit',resolve));child.kill('SIGTERM');await stopped;
+ child=startWorker();end=Date.now()+45000;
+ for(;;){try{if((await request('GET','/health')).status===200)break;}catch{}if(Date.now()>end)throw Error('restarted worker did not become healthy\n'+output);await sleep(250);}
+ const persisted=await request('GET','/api/room/'+customRoom.code);
+ assert.equal(persisted.status,200);assert.deepEqual(persisted.body().state.lineup,customRoom.state.lineup);
+ assert.equal(persisted.body().state.players.length,2);
  console.log('PASS: worker origin allowlist, code shape, create/join, two-player limit, token masking, stale token, websocket push of partner moves');
+ console.log('PASS: worker persists custom duplicate lineup across restart, shares creator selection on join/read, rejects invalid lineups');
 }
 catch(error){
  console.error(error.message);
