@@ -1,3 +1,4 @@
+import {puzzleKind} from './puzzles.ts';
 export const systems=['Water pumps','Supply elevator','Floodlights','Perimeter sensors','Barricade supports','Laser targeting','Turret drive','Electric fence'];
 const names=['Scout','Engineer','Medic','Ranger','Guardian','Commander','Mechanic','Sentinel'];
 export function shufflePicture(size:number){
@@ -6,7 +7,7 @@ export function shufflePicture(size:number){
  if(tiles.every((v,i)=>v===i+1))[tiles[0],tiles[1]]=[tiles[1],tiles[0]];
  return tiles;
 }
-export function rewardRoom(s:any,board:number){s.packages??=[];if(s.packages.some((p:any)=>p.room===board))return;const level=Math.min(s.packages.length+1,6),size=level+2;s.packages.push({id:'fighter-'+board,room:board,name:names[board],level,size,mode:'swap',tiles:shufflePicture(size),moves:0,recruited:false});s.systems??=[];if(!s.systems.includes(board))s.systems.push(board);}
+export function rewardRoom(s:any,board:number){s.packages??=[];if(s.packages.some((p:any)=>p.room===board))return;const level=Math.min(s.packages.length+1,6),size=level+2;s.packages.push({id:'fighter-'+board,room:board,name:names[puzzleKind(s,board)],level,size,mode:'swap',tiles:shufflePicture(size),moves:0,recruited:false});s.systems??=[];if(!s.systems.includes(board))s.systems.push(board);}
 export function upgradeDefense(s:any){s.packages??=[];s.systems??=[];s.defense??={wave:1,zombies:6,wall:100,log:'Activate systems and recruit fighters before defending the perimeter.'};for(const board of s.completed??[])rewardRoom(s,board);for(const pack of s.packages){if(pack.mode!=='swap'){pack.tiles=pack.tiles.map((v:number)=>v===0?pack.size*pack.size:v);pack.mode='swap';}}}
 export function defenseAction(s:any,a:any){
  if(a.type==='swapFighter'){

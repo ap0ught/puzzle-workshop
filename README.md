@@ -53,6 +53,8 @@ Commit both the source changes and the rebuilt `docs/` directory. The deployment
 
 - All eight workshop puzzles, room progression, announcements, and shared trays.
 - Three initially open rooms; completed rooms close and lock.
+- Choose an ordered lineup of 1–16 rooms in the lobby, including repeated puzzle types. The default is the original eight rooms. The first three (or all rooms in a shorter run) start open; each completion unlocks the next selected room.
+- The creator’s lineup is saved with the whole room and shared by both players. Each instance has its own pieces and puzzle progress, and awards a distinct fighter package and defense-system bonus, including duplicates.
 - Used puzzle pieces move into the main-room box. Unused tray pieces return to the floor.
 - Load tray from pockets and the temporary TEST shortcut to load matching room pieces.
 - Fighter packages progress through 3×3, 4×4, 5×5, 6×6, 7×7, and 8×8 picture grids.

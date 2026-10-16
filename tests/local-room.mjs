@@ -9,4 +9,20 @@ const competing=await post({type:'pickup',code:created.code,token:joined.token,i
 const loaded=await post({type:'stashRoom',code:created.code,token:created.token,board:0});assert.equal(loaded.state.items.filter(i=>i.owner==='tray:0').length,8);
 const again=await requestRoom('/api/room?code='+created.code);const state=await again.json();assert.equal(state.items[0].owner,1);assert.equal(state.players.length,2);
 const raw=JSON.parse(store.get('puzzle-workshop:room:'+created.code));assert.ok(raw.players[0].token);assert.equal((await post({type:'join',code:created.code})).status,409);
+const custom=await post({type:'create',name:'A',lineup:['gear','pipe','gear']});assert.equal(custom.status,200);
+assert.deepEqual(custom.state.lineup.map(room=>room.kind),['gear','pipe','gear']);
+const partner=await post({type:'join',code:custom.code,name:'B',lineup:['tent']});
+assert.deepEqual(partner.state.lineup,custom.state.lineup);
+const restored=await (await requestRoom('/api/room?code='+custom.code)).json();
+assert.deepEqual(restored.lineup,custom.state.lineup);
+assert.equal((await post({type:'create',lineup:[]})).status,400);
+assert.equal((await post({type:'create',lineup:['bogus']})).status,400);
+// Simulate a save from before lineups were introduced.
+delete raw.lineup;delete raw.instances;
+raw.pipes[2]='pipe0';raw.items[0].cell='0:2';raw.rot[2]=3;
+store.set('puzzle-workshop:room:'+created.code,JSON.stringify(raw));
+const migrated=await (await requestRoom('/api/room?code='+created.code)).json();
+assert.equal(migrated.lineup.length,8);assert.equal(migrated.pipes[2],'pipe0');assert.equal(migrated.rot[2],3);
+assert.ok(JSON.parse(store.get('puzzle-workshop:room:'+created.code)).lineup);
 console.log('PASS: static room creation, local join, token masking, inventory persistence, pickup race, room shortcut, two-player limit');
+console.log('PASS: local custom lineup survives join/read, invalid lineups rejected, legacy saves migrated and persisted');

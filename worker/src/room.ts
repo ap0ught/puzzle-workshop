@@ -48,7 +48,7 @@ export class Room extends DurableObject<Env> {
   }
 
   async #persist(): Promise<void> {
-    await this.ctx.storage.sql.exec('UPDATE room SET state = ?1 WHERE id = 1', JSON.stringify(this.#state));
+    await this.ctx.storage.sql.exec('INSERT INTO room (id, state) VALUES (1, ?1) ON CONFLICT(id) DO UPDATE SET state = excluded.state', JSON.stringify(this.#state));
   }
 
   /**
@@ -86,10 +86,10 @@ export class Room extends DurableObject<Env> {
     return this.#state !== null;
   }
 
-  async create(name: string) {
+  async create(name: string, lineup?: unknown) {
     if (this.#state) throw new RoomError('Room already exists.', 409);
     const before = JSON.stringify(this.#state);
-    const state = initial();
+    const state = initial(lineup);
     state.players.push({ id: 1, name: name.slice(0, 20), token: crypto.randomUUID(), x: 45, y: 60 });
     this.#state = state;
     await this.#commit(before);
@@ -178,7 +178,7 @@ export class Room extends DurableObject<Env> {
     try {
       switch (body?.type) {
         case 'create':
-          return json(await this.create(String(body.name || 'Player 1')));
+          return json(await this.create(String(body.name || 'Player 1'), body.lineup));
         case 'join':
           return json(await this.join(String(body.name || 'Player 2')));
         default:

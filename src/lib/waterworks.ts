@@ -12,7 +12,7 @@ export function traceWater(state: any) {
         const {cell,entry} = queue.shift()!;
         const id = state.pipes[cell];
         if (!id) return {passed:false,path,leak:cell,reason:'Water reached an empty socket.'};
-        const ports = connections(Number(id.slice(4)),state.rot[cell]);
+        const ports = connections(parseInt(id.slice(4), 10),state.rot[cell]);
         if (!ports.includes(entry)) return {passed:false,path,leak:cell,reason:'These pipe ends do not connect.'};
         if (seen.has(cell)) continue;
         seen.add(cell);path.push(cell);
