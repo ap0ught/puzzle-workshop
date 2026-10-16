@@ -11,3 +11,19 @@ console.log('PASS: matching floor pieces only, both backpacks and box preserved,
 
 const mixed=initial();mixed.players=[{id:1,token:'a',name:'A'}];act(mixed,'a',{type:'pickup',item:'battery0'});act(mixed,'a',{type:'stashRoom',board:2});assert.equal(mixed.items.filter(i=>i.owner==='tray:2').length,8);act(mixed,'a',{type:'load',board:2});assert.equal(mixed.switches.filter(Boolean).length,9);
 console.log('PASS: room shortcut reserves socket capacity for compatible pocket pieces');
+
+const partnerTile=initial(['tile','tile']);partnerTile.players=[{id:1,token:'a',name:'A'},{id:2,token:'b',name:'B'}];partnerTile.items.find(i=>i.id==='tile7').owner=2;
+act(partnerTile,'a',{type:'stashRoom',board:0});
+assert.deepEqual(partnerTile.items.filter(i=>i.owner==='tray:0').map(i=>i.n).sort((a,b)=>a-b),[1,2,3,4,5,6,7]);
+assert.equal(partnerTile.items.find(i=>i.id==='tile0@room-1').owner,null);
+act(partnerTile,'a',{type:'load',board:0});
+const partnerLoaded=partnerTile.items.filter(i=>i.cell?.startsWith('0:'));
+assert.equal(new Set(partnerLoaded.map(i=>i.n)).size,partnerLoaded.length);
+
+const pocketTile=initial(['tile','tile']);pocketTile.players=[{id:1,token:'a',name:'A'}];pocketTile.items.find(i=>i.id==='tile0@room-1').owner=1;
+act(pocketTile,'a',{type:'stashRoom',board:0});
+assert.deepEqual(pocketTile.items.filter(i=>i.owner==='tray:0').map(i=>i.n).sort((a,b)=>a-b),[2,3,4,5,6,7,8]);
+act(pocketTile,'a',{type:'load',board:0});
+const pocketLoaded=pocketTile.items.filter(i=>i.cell?.startsWith('0:'));
+assert.deepEqual(pocketLoaded.map(i=>i.n).sort((a,b)=>a-b),[1,2,3,4,5,6,7,8]);
+console.log('PASS: slider room shortcut selects missing numbers when a partner or caller carries a tile');

@@ -105,22 +105,22 @@ export default function Page() {
     const beamPreview = s && kind===5 && readyToSolve(s,board) ? traceBeam(s,board) : null;
     const waterFlowing = !!state?.waterTest && clock < state.waterTest.startedAt + state.waterTest.duration;
     const circuitWin = !!s && kind === 7 && circuitReadings(s,board).every((r: any) => r.matched);
+    const roomCompleted = !!s && activeRoom >= 0 && s.completed.includes(activeRoom);
+    const nextRoom = s?.unlocked.find((i: number) => !s.completed.includes(i));
     useEffect(() => {
         if (activeRoom === board && kind === 0 && waterFlowing) return;
         if (activeRoom === board && kind === 7 && circuitWin) {
             const hold = setTimeout(() => {
                 ActiveRoom(-1); Mode('explore'); Sel(''); Remove(false);
-                const next = s?.unlocked.find((i: number) => !s.completed.includes(i));
-                if (next !== undefined) B(next);
+                if (nextRoom !== undefined) B(nextRoom);
             }, 3200);
             return () => clearTimeout(hold);
         }
-        if (s && activeRoom >= 0 && s.completed.includes(activeRoom)) {
+        if (roomCompleted) {
             ActiveRoom(-1); Mode('explore'); Sel(''); Remove(false);
-            const next = s.unlocked.find((i: number) => !s.completed.includes(i));
-            if (next !== undefined) B(next);
+            if (nextRoom !== undefined) B(nextRoom);
         }
-    }, [s, activeRoom, board, kind, waterFlowing, circuitWin]);
+    }, [activeRoom, board, kind, waterFlowing, circuitWin, roomCompleted, nextRoom]);
     function openPuzzle(i: number) { if (!s.unlocked.includes(i) || s.completed.includes(i)) {
         Msg('Complete an open room to unlock this one.');
         return;

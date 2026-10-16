@@ -190,9 +190,31 @@ export function act(s: any, token: string, a: any) {
         const trayCount = s.items.filter((it:any)=>it.owner==='tray:'+board&&it.cell===null).length;
         const space = Math.max(0,requiredPieces(board,s)-filledSockets(s,board)-trayCount-inv().filter((it:any)=>compatible(board,it,s)).length);
         const loose = s.items.filter((it:any)=>it.owner===null&&it.cell===null&&compatible(board,it,s));
+        let candidates = loose;
+        if (kind === 1) {
+            const represented = new Set<number>();
+            for (const id of state[puzzleFor(s, board).field].filter(Boolean)) {
+                const placed = s.items.find((it: any) => it.id === id);
+                if (placed) represented.add(placed.n);
+            }
+            for (const it of s.items.filter((it: any) => it.owner === 'tray:' + board ||
+                (it.cell === null && s.players.some((player: any) => player.id === it.owner) && compatible(board, it, s))))
+                represented.add(it.n);
+            const missing = new Set(Array.from({length: requiredPieces(board, s)}, (_, i) => i + 1)
+                .filter(n => !represented.has(n)));
+            candidates = loose.filter((it: any) => missing.has(it.n));
+        }
         // Prefer this puzzle's own pieces, then reusable alternatives; never overfill.
-        loose.sort((a:any,b:any)=>Number(b.floorRoom===board)-Number(a.floorRoom===board)||Number(b.type===puzzleFor(s,board).kind)-Number(a.type===puzzleFor(s,board).kind));
-        for (const it of loose.slice(0,space)) it.owner='tray:'+board;
+        candidates.sort((a:any,b:any)=>Number(b.floorRoom===board)-Number(a.floorRoom===board)||Number(b.type===puzzleFor(s,board).kind)-Number(a.type===puzzleFor(s,board).kind));
+        if (kind === 1) {
+            const numbers = new Set<number>();
+            candidates = candidates.filter((it: any) => {
+                if (numbers.has(it.n)) return false;
+                numbers.add(it.n);
+                return true;
+            });
+        }
+        for (const it of candidates.slice(0,space)) it.owner='tray:'+board;
         return s;
     }
     if (a.type === 'stash') {
