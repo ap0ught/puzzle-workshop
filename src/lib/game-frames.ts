@@ -78,14 +78,21 @@ export function resetOrLoad(s: any, a: any, p: any) {
 
 export function frameAction(s: any, a: any, p: any, item: any, inv: () => any[]) {
     let b = Number(a.board), c = Number(a.cell);
+    if (!Number.isInteger(b) || b < 0 || b >= puzzles.length || !Number.isInteger(c) || c < 0 || c >= puzzles[b].size)
+        throw Error('Invalid frame.');
+    if (s.solved[b] && a.type !== 'remove')
+        throw Error('This station is complete.');
+    const field = puzzles[b].field;
+    if (!s.completed.includes(b) && s.locked[b].includes(c) && (a.type === 'remove' || (a.type === 'use' && (b === 0 || b === 1))))
+        throw Error('This piece is locked in the correct position.');
     if (a.type === 'place') {
         if (!item || (item.owner !== p.id && item.owner !== 'tray:' + b) || item.cell !== null || !compatible(b, item))
             throw Error('Select a matching inventory item.');
         if (b === 3 && !tentSolution.includes(c))
             throw Error('Wrong position — item rejected. Try a different frame.');
-        if (s[puzzles[b].field][c] || (b === 3 && trees.includes(c)) || (b === 1 && c === 8))
+        if (s[field][c] || (b === 3 && trees.includes(c)) || (b === 1 && c === 8))
             throw Error('Choose an empty frame.');
-        s[puzzles[b].field][c] = item.id;
+        s[field][c] = item.id;
         item.owner = null;
         item.cell = b + ':' + c;
         if (b === 2) {
@@ -106,7 +113,7 @@ export function frameAction(s: any, a: any, p: any, item: any, inv: () => any[])
         }
     }
     if (a.type === 'remove') {
-        let id = s[puzzles[b].field][c], it = s.items.find((i: any) => i.id === id);
+        let id = s[field][c], it = s.items.find((i: any) => i.id === id);
         if (!it)
             throw Error('That frame is empty.');
         if (!a.tray && inv().length >= 5)
@@ -115,7 +122,7 @@ export function frameAction(s: any, a: any, p: any, item: any, inv: () => any[])
             throw Error('Slide the tiles after assembly.');
         if (b === 1)
             s.assembled = false;
-        s[puzzles[b].field][c] = null;
+        s[field][c] = null;
         it.cell = null;
         it.owner = a.tray ? 'tray:' + b : p.id;
     }
