@@ -1,4 +1,4 @@
-import { upgrade, announce, trees, tentSolution, validateBoard } from './game-state.ts';
+import { upgrade, announce, tentSolution, validateBoard } from './game-state.ts';
 import { check } from './game-check.ts';
 import { frameAction, resetOrLoad } from './game-frames.ts';
 import { defenseAction } from './defense.ts';
